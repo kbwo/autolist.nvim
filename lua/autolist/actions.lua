@@ -290,6 +290,19 @@ end
 
 local function shift_plan(bufnr, win, direction, opts)
   local lnum, col = unpack(vim.api.nvim_win_get_cursor(win))
+
+  -- Reject the impossible cases from the line alone, before looking for the
+  -- block. Dedenting an item already at the margin can never succeed, and
+  -- finding its block would classify the buffer up to here for nothing. This
+  -- matters because a key bound to dedent is pressed on such lines routinely,
+  -- and every one of those presses would otherwise pay for the search.
+  if direction < 0 then
+    local parsed = lineparse.parse(block.get_line(bufnr, lnum), opts)
+    if not parsed.marker or parsed.indent_width == 0 then
+      return nil
+    end
+  end
+
   local blk = block.find(bufnr, lnum, opts)
   if not blk then
     return nil
