@@ -1,0 +1,280 @@
+*autolist.txt*   Keep markdown lists tidy while you write
+
+==============================================================================
+CONTENTS                                                    *autolist-contents*
+
+    1. Introduction ......................... |autolist-introduction|
+    2. Mappings ............................. |autolist-mappings|
+    3. Commands ............................. |autolist-commands|
+    4. Lua API .............................. |autolist-api|
+    5. Configuration ........................ |autolist-configuration|
+    6. Behaviour ............................ |autolist-behaviour|
+    7. Limits ............................... |autolist-limits|
+
+==============================================================================
+1. INTRODUCTION                                         *autolist-introduction*
+
+autolist maintains the shape of a list -- markers, numbering, indentation and
+checkboxes -- so that writing the content is all that is left to do.
+
+It never acts on its own. No key is mapped, no autocommand rewrites text, and
+no line you did not touch is changed as a side effect. Everything below runs
+because you invoked it.
+
+Requires Neovim 0.9 or newer and nothing else.
+
+==============================================================================
+2. MAPPINGS                                                 *autolist-mappings*
+
+autolist maps no keys. Choose them yourself.
+
+Each entry point reports whether it acted, so a mapping can fall through to
+whatever the key would otherwise do -- a default, or another plugin. The
+expression helpers |autolist.cr()|, |autolist.tab()| and |autolist.shift_tab()|
+return a key sequence when autolist wants the key and |nil| when it does not:
+>lua
+    vim.keymap.set('i', '<CR>', function()
+      return require('autolist').cr() or '<CR>'
+    end, { buffer = true, expr = true })
+<
+To keep another plugin that also owns the key, chain the calls:
+>lua
+    vim.keymap.set('i', '<CR>', function()
+      return require('autolist').cr()
+        or require('other-plugin').cr()
+        or '<CR>'
+    end, { buffer = true, expr = true })
+<
+The helpers work by returning a |<Cmd>| sequence, because an |:map-<expr>|
+mapping is not allowed to change the buffer itself.
+
+==============================================================================
+3. COMMANDS                                                 *autolist-commands*
+
+                                                            *:AutolistRenumber*
+:AutolistRenumber
+        Make the numbers of the list block around the cursor consecutive.
+        See |autolist-renumbering|.
+
+                                                              *:AutolistIndent*
+:AutolistIndent
+        Move the item under the cursor one level in, taking its continuation
+        lines and nested items with it, and renumber the block.
+        See |autolist-indenting|.
+
+                                                              *:AutolistDedent*
+:AutolistDedent
+        The same, one level out.
+
+                                                      *:AutolistToggleCheckbox*
+:[range]AutolistToggleCheckbox
+        Flip `[ ]` and `[x]` on the current line, or on every line of [range].
+        Items without a checkbox are left alone.
+
+                                                        *:AutolistCycleMarkers*
+:AutolistCycleMarkers
+        Change every item of the block to the next marker style in `cycle`.
+        See |autolist-marker-styles|.
+
+==============================================================================
+4. LUA API                                                       *autolist-api*
+
+Every function returns `true` when it changed the buffer and `false` when it
+decided not to act.
+
+autolist.setup({opts})                                       *autolist.setup()*
+        Override the defaults. Optional: the defaults already work for
+        markdown. See |autolist-configuration|.
+
+autolist.newline()                                         *autolist.newline()*
+        Break the current list item and start the next one, or leave the list
+        when the item is empty. See |autolist-newline|.
+
+autolist.indent()                                           *autolist.indent()*
+autolist.dedent()                                           *autolist.dedent()*
+        Move the item under the cursor one level and renumber the block.
+
+autolist.renumber()                                       *autolist.renumber()*
+        Renumber the list block around the cursor.
+
+autolist.toggle_checkbox([{lnum}])                 *autolist.toggle_checkbox()*
+        Flip the checkbox on {lnum}, or on the cursor line.
+
+autolist.cycle_markers()                             *autolist.cycle_markers()*
+        Switch the block to the next marker style.
+
+autolist.cr()                                                   *autolist.cr()*
+        For an insert-mode |:map-<expr>| mapping: a key sequence that runs
+        |autolist.newline()|, or |nil| when the cursor is not on a list item.
+
+autolist.tab()                                                 *autolist.tab()*
+autolist.shift_tab()                                     *autolist.shift_tab()*
+        For an insert-mode |:map-<expr>| mapping: a key sequence that runs
+        |autolist.indent()| or |autolist.dedent()|, or |nil|.
+
+        These return |nil| unless the cursor is in the leading part of the item
+        -- its indentation, marker or checkbox. Pressing the key while typing
+        the content inserts a tab as usual.
+
+==============================================================================
+5. CONFIGURATION                                       *autolist-configuration*
+
+Defaults:
+>lua
+    require('autolist').setup({
+      filetypes = {
+        markdown = {
+          cycle = { '-', '*', '1.', '1)', 'a)', 'I.' },
+          checkbox = { checked = 'x', unchecked = ' ' },
+          blockquote = true,
+          code_blocks = true,
+        },
+      },
+    })
+<
+filetypes                                            *autolist-opt-filetypes*
+        Which filetypes autolist acts on. Add an entry to enable another one;
+        it inherits the same per-filetype defaults. Set an entry to `false` to
+        disable it. In a buffer of any other filetype every entry point does
+        nothing and reports `false`.
+>lua
+        require('autolist').setup({
+          filetypes = {
+            text = {},
+            markdown = { cycle = { '-', '1.' } },
+          },
+        })
+<
+cycle                                                     *autolist-opt-cycle*
+        The order |:AutolistCycleMarkers| walks through. Each entry is written
+        the way the marker appears in the buffer, so `'1.'` and `'1)'` are
+        different styles, and `'a)'` and `'I.'` set both the kind of numbering
+        and its letter case.
+
+checkbox                                               *autolist-opt-checkbox*
+        The characters written between the brackets. Reading is not affected:
+        `[X]` is understood as checked whatever `checked` is set to.
+
+blockquote                                           *autolist-opt-blockquote*
+        Treat a leading `>` as part of the item prefix, so that lists inside a
+        blockquote work like any other list and keep their quote markers.
+
+code_blocks                                         *autolist-opt-code_blocks*
+        Recognise fenced and indented code blocks and stay out of them.
+
+Indentation is not configured here. 'shiftwidth', 'tabstop' and 'expandtab' are
+read from the buffer being edited, so autolist writes indentation the same way
+you do.
+
+==============================================================================
+6. BEHAVIOUR                                               *autolist-behaviour*
+
+Blocks and nesting                                             *autolist-block*
+
+A list block is a run of consecutive lines that are list items or continuation
+lines -- unmarked lines indented deeper than the item above, which are part of
+that item's content. A block ends at a blank line, at a line that is neither of
+those, at a change of blockquote depth, and at a code block.
+
+Nesting is decided by comparing indentation, not by counting it: an item
+indented further than the one above is its child, whatever the difference. Two-
+and four-space indentation, and tabs mixed with spaces, all work.
+
+Everything that renumbers works on one block, and counts each level of it
+independently.
+
+Continuing a list                                            *autolist-newline*
+
+|autolist.newline()| starts the next item with the same indentation, the same
+marker and the same delimiter, counting an ordered marker up. Breaking in the
+middle of an item moves the rest of the line into the new one.
+
+A checkbox is carried over but always starts unchecked, however the item above
+was left.
+
+A list written entirely with one repeated number (`1.` `1.` `1.`, which
+markdown renders as a sequence anyway) goes on repeating that number.
+
+On a continuation line, and with the cursor before the marker, it reports
+`false` and leaves the key to you.
+
+Leaving a list                                                 *autolist-empty*
+
+|autolist.newline()| on an item with no content clears the item instead, so
+that ending a list does not mean deleting the marker by hand. An item holding
+nothing but a checkbox counts as empty. Inside a blockquote the quote markers
+stay, because the text is still quoted.
+
+Renumbering                                              *autolist-renumbering*
+
+|:AutolistRenumber| runs only when you ask. Nothing watches the buffer.
+
+There is no line limit: how far it reaches is decided by the block boundary
+alone. Each level counts independently, and a level keeps the number it starts
+from -- a list beginning at `3.` becomes `3. 4. 5.`, not `1. 2. 3.`.
+
+Unordered items are not touched. Letters (`a) b) c)`) and Roman numerals
+(`I. II. III.`) are counted as sequences.
+
+A list written entirely with one repeated number is deliberate and is left
+as it is.
+
+Where items differ in style within one level, each keeps its own kind of
+number and its own delimiter; only the order is made consecutive. Changing the
+style is |:AutolistCycleMarkers|' job.
+
+Indenting                                                  *autolist-indenting*
+
+|:AutolistIndent| moves the item together with its continuation lines and
+nested items, then renumbers the block, so |:AutolistRenumber| is not needed
+afterwards.
+
+The new depth matches the children the previous sibling already has, so the
+item joins an existing nested list rather than inventing a width for it. When
+there are none, it moves in by 'shiftwidth'.
+
+An item indented next to existing siblings continues their numbering. An item
+that ends up alone at a level it just created starts that level from the
+beginning.
+
+The first item of a level cannot be indented -- there is nothing to nest it
+under -- and a top-level item cannot be dedented. Both report `false`.
+
+Marker styles                                          *autolist-marker-styles*
+
+|:AutolistCycleMarkers| converts every item of the block, at every level, to
+the next style in `cycle`. When the result is an ordered list, each level is
+numbered from the beginning.
+
+Lines that are not lists                                        *autolist-code*
+
+Things that only look like markers are left alone: fenced code blocks, indented
+code blocks, emphasis such as `*bold*`, thematic breaks such as `---` and
+`***`, and a `1.` appearing mid-sentence.
+
+An indented code block is taken to be a line indented four columns or more that
+follows a blank line and is not inside a list -- inside a list, deep
+indentation is a continuation line or a nested item. Unlike CommonMark, an
+indented first line of a buffer does not open one, so that a file holding only
+a nested fragment of a list still works.
+
+==============================================================================
+7. LIMITS                                                     *autolist-limits*
+
+A single letter can be read either as a letter or as a Roman numeral: `i.` is
+both "the ninth letter" and "one". autolist settles it from the siblings when
+one of them is unambiguous (`ii.` makes the level Roman, `b.` makes it
+alphabetic), and otherwise by case -- uppercase is Roman, lowercase is
+alphabetic. A lone `c)` meant as the third letter is therefore read as the
+third letter, but a lone `C.` is read as one hundred.
+
+Alphabetic markers are runs of letters of one case, so `ab)` is a marker and
+`Ab)` is not.
+
+Blockquotes of different depths are separate blocks; numbering does not run
+across them.
+
+The specification these rules come from, including why each was decided this
+way, is in `docs/requirements.md` (Japanese).
+
+vim:tw=78:ts=8:noet:ft=help:norl:
