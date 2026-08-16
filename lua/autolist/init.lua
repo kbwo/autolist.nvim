@@ -54,6 +54,20 @@ function M.cycle_markers()
   return actions.cycle_markers(0, vim.api.nvim_win_get_cursor(0)[1])
 end
 
+--- Whether the cursor sits in the leading part of a list item -- its
+--- indentation, marker or checkbox -- rather than in the content.
+---
+--- This is the condition |autolist.tab()| applies internally. It is exposed for
+--- callers that cannot use an expression mapping, such as a key routed through
+--- another plugin's own mapping table:
+---
+---     elseif autolist.at_item_prefix() and autolist.indent() then
+---
+--- @return boolean
+function M.at_item_prefix()
+  return actions.cursor_in_prefix(0, 0)
+end
+
 --- Expression-mapping helpers.
 ---
 --- Each returns a key sequence when autolist wants the key, and nil when it does

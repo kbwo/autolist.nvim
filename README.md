@@ -219,6 +219,23 @@ Every function returns `true` when it acted and `false` when it did not.
 | `toggle_checkbox(lnum?)` | Flip the checkbox on a line. |
 | `cycle_markers()` | Switch the block to the next marker style. |
 | `cr()` / `tab()` / `shift_tab()` | For `expr` mappings: a key sequence, or `nil` to fall through. |
+| `at_item_prefix()` | Whether the cursor is in an item's indent/marker/checkbox. For callers that cannot use an `expr` mapping. |
+
+If another plugin already owns the key, route autolist through its mapping
+table rather than shadowing it. With `nvim-cmp`:
+
+```lua
+['<Tab>'] = cmp.mapping(function(fallback)
+  local autolist = require('autolist')
+  if cmp.visible() then
+    cmp.select_next_item()
+  elseif autolist.at_item_prefix() and autolist.indent() then
+    return
+  else
+    fallback()      -- whatever <Tab> did before cmp took it
+  end
+end, { 'i' }),
+```
 
 ## Tests
 

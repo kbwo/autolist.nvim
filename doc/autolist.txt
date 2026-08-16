@@ -103,6 +103,25 @@ autolist.toggle_checkbox([{lnum}])                 *autolist.toggle_checkbox()*
 autolist.cycle_markers()                             *autolist.cycle_markers()*
         Switch the block to the next marker style.
 
+autolist.at_item_prefix()                           *autolist.at_item_prefix()*
+        Whether the cursor is in the leading part of a list item -- its
+        indentation, marker or checkbox -- rather than in the content.
+
+        This is the condition |autolist.tab()| applies internally, exposed for
+        callers that cannot use an expression mapping. Routing `<Tab>` through
+        another plugin's mapping table is the usual reason:
+>lua
+        ['<Tab>'] = cmp.mapping(function(fallback)
+          local autolist = require('autolist')
+          if cmp.visible() then
+            cmp.select_next_item()
+          elseif autolist.at_item_prefix() and autolist.indent() then
+            return
+          else
+            fallback()
+          end
+        end, { 'i' }),
+<
 autolist.cr()                                                   *autolist.cr()*
         For an insert-mode |:map-<expr>| mapping: a key sequence that runs
         |autolist.newline()|, or |nil| when the cursor is not on a list item.

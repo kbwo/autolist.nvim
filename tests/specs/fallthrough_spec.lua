@@ -32,6 +32,17 @@ T.describe('falling through to another plugin', function()
     T.eq({ 'hello', 'FROM-OTHER' }, T.lines(buf))
   end)
 
+  T.it('exposes the prefix test for non-expr callers', function()
+    T.buf({ '- a', '- b' })
+    T.cursor(2, 0)
+    T.truthy(require('autolist').at_item_prefix(), 'cursor on the marker')
+    T.cursor(2, #'- b')
+    T.falsy(require('autolist').at_item_prefix(), 'cursor in the content')
+    T.buf({ 'hello' })
+    T.cursor(1, 0)
+    T.falsy(require('autolist').at_item_prefix(), 'not a list line')
+  end)
+
   T.it('is not disturbed by remap being on', function()
     -- The <Cmd> sequence autolist returns must survive a remapping mapping:
     -- its trailing <CR> must not be fed back through this same mapping.
