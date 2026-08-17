@@ -245,3 +245,7 @@ make test
 
 The suite drives real buffers, and its cases are the input/output examples from
 the requirements document.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
