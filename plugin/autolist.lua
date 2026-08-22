@@ -27,9 +27,13 @@ command('AutolistToggleCheckbox', function(args)
   end
 end, { range = true, desc = 'Toggle the checkbox on each line of the range' })
 
-command('AutolistCycleMarkers', function()
-  require('autolist').cycle_markers()
-end, { desc = 'Switch the list block to the next marker style' })
+command('AutolistCycleMarkersBlock', function()
+  require('autolist').cycle_markers_block()
+end, { desc = 'Switch the whole block, every level, to the next marker style' })
+
+command('AutolistCycleMarkersSiblings', function()
+  require('autolist').cycle_markers_siblings()
+end, { desc = 'Switch only the siblings at the cursor to the next marker style' })
 
 command('AutolistMakeList', function(args)
   require('autolist').make_list(args.line1, args.line2)

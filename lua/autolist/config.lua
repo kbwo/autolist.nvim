@@ -4,8 +4,9 @@ local M = {}
 
 --- Applied to every enabled filetype, then overridden by that filetype's entry.
 M.filetype_defaults = {
-  --- Order used by `cycle_markers()` (FR-6).
-  cycle = { '-', '*', '1.', '1)', 'a)', 'I.' },
+  --- Order the marker styles are cycled through (FR-6). An entry may carry a
+  --- checkbox, which makes having one part of the style.
+  cycle = { '-', '- [ ]', '*', '1.', '1)', 'a)', 'I.' },
   --- Characters written between the brackets of a checkbox (FR-5).
   checkbox = { checked = 'x', unchecked = ' ' },
   --- Treat a leading `>` as part of the item prefix.

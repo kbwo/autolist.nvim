@@ -71,10 +71,15 @@ mapping is not allowed to change the buffer itself.
         Flip `[ ]` and `[x]` on the current line, or on every line of [range].
         Items without a checkbox are left alone.
 
-                                                        *:AutolistCycleMarkers*
-:AutolistCycleMarkers
-        Change every item of the block to the next marker style in `cycle`.
-        See |autolist-marker-styles|.
+                                                   *:AutolistCycleMarkersBlock*
+:AutolistCycleMarkersBlock
+        Change every item of the block, at every level, to the next marker
+        style in `cycle`. See |autolist-marker-styles|.
+
+                                                *:AutolistCycleMarkersSiblings*
+:AutolistCycleMarkersSiblings
+        Change only the run of siblings the cursor is in, leaving its parent
+        and its nested items as they are. See |autolist-marker-styles|.
 
                                                             *:AutolistMakeList*
 :[range]AutolistMakeList
@@ -105,8 +110,10 @@ autolist.renumber()                                       *autolist.renumber()*
 autolist.toggle_checkbox([{lnum}])                 *autolist.toggle_checkbox()*
         Flip the checkbox on {lnum}, or on the cursor line.
 
-autolist.cycle_markers()                             *autolist.cycle_markers()*
-        Switch the block to the next marker style.
+autolist.cycle_markers_block()                 *autolist.cycle_markers_block()*
+autolist.cycle_markers_siblings()           *autolist.cycle_markers_siblings()*
+        Switch the block, or only the siblings at the cursor, to the next
+        marker style. See |autolist-marker-styles|.
 
 autolist.make_list([{first}[, {last}]])                  *autolist.make_list()*
         Turn the plain lines between {first} and {last} into list items,
@@ -153,7 +160,7 @@ Defaults:
     require('autolist').setup({
       filetypes = {
         markdown = {
-          cycle = { '-', '*', '1.', '1)', 'a)', 'I.' },
+          cycle = { '-', '- [ ]', '*', '1.', '1)', 'a)', 'I.' },
           checkbox = { checked = 'x', unchecked = ' ' },
           blockquote = true,
           code_blocks = true,
@@ -175,10 +182,14 @@ filetypes                                            *autolist-opt-filetypes*
         })
 <
 cycle                                                     *autolist-opt-cycle*
-        The order |:AutolistCycleMarkers| walks through. Each entry is written
-        the way the marker appears in the buffer, so `'1.'` and `'1)'` are
-        different styles, and `'a)'` and `'I.'` set both the kind of numbering
-        and its letter case.
+        The order the marker styles are cycled through. Each entry is written
+        the way it appears in the buffer, so `'1.'` and `'1)'` are different
+        styles, and `'a)'` and `'I.'` set both the kind of numbering and its
+        letter case.
+
+        An entry may carry a checkbox, which makes having one part of the
+        style: `'- [ ]'` is a different style from `'-'`, and cycling between
+        them adds and removes the box. See |autolist-marker-styles|.
 
 checkbox                                               *autolist-opt-checkbox*
         The characters written between the brackets. Reading is not affected:
@@ -250,7 +261,7 @@ as it is.
 
 Where items differ in style within one level, each keeps its own kind of
 number and its own delimiter; only the order is made consecutive. Changing the
-style is |:AutolistCycleMarkers|' job.
+style is |:AutolistCycleMarkersBlock|' job.
 
 Indenting                                                  *autolist-indenting*
 
@@ -271,9 +282,35 @@ under -- and a top-level item cannot be dedented. Both report `false`.
 
 Marker styles                                          *autolist-marker-styles*
 
-|:AutolistCycleMarkers| converts every item of the block, at every level, to
-the next style in `cycle`. When the result is an ordered list, each level is
-numbered from the beginning.
+A style is the marker together with whether the item carries a checkbox. The
+tick inside the box is not part of it: that is the writer's record of what is
+done, not a matter of appearance.
+
+Two commands move items to the next style in `cycle`, differing only in what
+they take with them, because a nested list often wants a different marker per
+level:
+
+|:AutolistCycleMarkersBlock|     every item of the block, at every level
+|:AutolistCycleMarkersSiblings|  only the run the cursor is in; its parent and
+                                 its nested items are untouched
+
+Either way, the style moved on from is the one the first item of the target
+wears, and every item of the target ends up on the same next style. A style
+that is not in `cycle` lands on the start of it. When the result is ordered,
+each level is numbered from the beginning.
+>
+    - 親                            - 親
+        - 子     →  siblings  →         1. 子
+        - 子                            2. 子
+    - 親                            - 親
+<
+Where the next style has a checkbox, items without one gain an unchecked box
+and items that already have one keep their tick. Where it has none, the box is
+removed, so a full turn through the cycle brings the list back as it was.
+>
+    - 買い物                        - [ ] 買い物
+    - 洗濯          →  cycle  →     - [ ] 洗濯
+<
 
 Turning plain text into a list                             *autolist-make-list*
 
@@ -299,8 +336,8 @@ Within the range it leaves alone: lines that are already items, blank lines,
 thematic breaks, and anything inside a code block. Blockquote markers are kept.
 
 The marker is the first entry of `cycle`, so there is no second setting to keep
-in step. For any other style, run |:AutolistCycleMarkers| afterwards. If that
-first entry is an ordered marker, each level is numbered from the start.
+in step. For any other style, run |:AutolistCycleMarkersBlock| afterwards. If
+that first entry is an ordered marker, each level is numbered from the start.
 
 Lines that are not lists                                        *autolist-code*
 

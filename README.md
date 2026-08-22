@@ -54,7 +54,8 @@ vim.api.nvim_create_autocmd('FileType', {
 
     vim.keymap.set('n', '<leader>lr', '<Cmd>AutolistRenumber<CR>', { buffer = event.buf })
     vim.keymap.set('n', '<leader>lc', '<Cmd>AutolistToggleCheckbox<CR>', { buffer = event.buf })
-    vim.keymap.set('n', '<leader>lm', '<Cmd>AutolistCycleMarkers<CR>', { buffer = event.buf })
+    vim.keymap.set('n', '<leader>lm', '<Cmd>AutolistCycleMarkersBlock<CR>', { buffer = event.buf })
+    vim.keymap.set('n', '<leader>ls', '<Cmd>AutolistCycleMarkersSiblings<CR>', { buffer = event.buf })
     vim.keymap.set('n', '>>', '<Cmd>AutolistIndent<CR>', { buffer = event.buf })
     vim.keymap.set('n', '<<', '<Cmd>AutolistDedent<CR>', { buffer = event.buf })
   end,
@@ -153,9 +154,36 @@ adding one.
 
 ### Marker styles
 
-`:AutolistCycleMarkers` moves the whole block to the next marker style in the
-configured order — by default `-` → `*` → `1.` → `1)` → `a)` → `I.` and around
-again. Turning a block into an ordered list numbers it correctly.
+A style is the marker together with whether the item carries a checkbox. The
+tick inside the box is not part of it — that is your record of what is done,
+not a matter of appearance. The default order is `-` → `- [ ]` → `*` → `1.` →
+`1)` → `a)` → `I.` and around again.
+
+Two commands move items to the next style, differing only in what they take
+with them, because a nested list often wants a different marker per level:
+
+- `:AutolistCycleMarkersBlock` — every item of the block, at every level
+- `:AutolistCycleMarkersSiblings` — only the run the cursor is in; its parent
+  and its nested items are untouched
+
+```markdown
+- 親                                  - 親
+    - 子   →  siblings, three times →     1. 子
+    - 子                                  2. 子
+- 親                                  - 親
+```
+
+Where the next style has a checkbox, items without one gain an unchecked box
+and items that already have one keep their tick. Where it has none, the box is
+removed, so a full turn brings the list back as it was.
+
+```markdown
+- 買い物                       - [ ] 買い物
+- 洗濯          →  cycle  →    - [ ] 洗濯
+```
+
+Turning a list into an ordered one numbers each level from the beginning. A
+style that is not in `cycle` lands on the start of it.
 
 ### Turning plain text into a list
 
@@ -175,7 +203,7 @@ lines you never pointed at. Lines that are already items, blank lines,
 thematic breaks and code blocks are left alone.
 
 The marker is the first entry of `cycle`; for any other style, run
-`:AutolistCycleMarkers` afterwards.
+`:AutolistCycleMarkersBlock` afterwards.
 
 ### Where it stays out of the way
 
@@ -196,8 +224,9 @@ Defaults:
 require('autolist').setup({
   filetypes = {
     markdown = {
-      -- Order used by :AutolistCycleMarkers.
-      cycle = { '-', '*', '1.', '1)', 'a)', 'I.' },
+      -- Order the marker styles are cycled through. An entry may carry a
+      -- checkbox, which makes having one part of the style.
+      cycle = { '-', '- [ ]', '*', '1.', '1)', 'a)', 'I.' },
       -- Characters written between the brackets.
       checkbox = { checked = 'x', unchecked = ' ' },
       -- Treat a leading '>' as part of the item prefix.
@@ -237,7 +266,8 @@ Every function returns `true` when it acted and `false` when it did not.
 | `indent()` / `dedent()` | Move the item one level and renumber the block. |
 | `renumber()` | Renumber the block under the cursor. |
 | `toggle_checkbox(lnum?)` | Flip the checkbox on a line. |
-| `cycle_markers()` | Switch the block to the next marker style. |
+| `cycle_markers_block()` | Switch every item of the block to the next marker style. |
+| `cycle_markers_siblings()` | Switch only the siblings at the cursor. |
 | `make_list(first?, last?)` | Turn plain lines into list items. Defaults to the cursor line. |
 | `cr()` / `tab()` / `shift_tab()` | For `expr` mappings: a key sequence, or `nil` to fall through. |
 | `at_item_prefix()` | Whether the cursor is in an item's indent/marker/checkbox. For callers that cannot use an `expr` mapping. |

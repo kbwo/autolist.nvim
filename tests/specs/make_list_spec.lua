@@ -98,8 +98,9 @@ T.describe('FR-9 turning plain lines into a list', function()
     local buf = T.buf({ 'a', 'b' })
     autolist.make_list(1, 2)
     T.cursor(1, 0)
-    autolist.cycle_markers()
-    autolist.cycle_markers()
+    autolist.cycle_markers_block() -- '-' -> '- [ ]'
+    autolist.cycle_markers_block() -- '- [ ]' -> '*'
+    autolist.cycle_markers_block() -- '*' -> '1.'
     T.eq({ '1. a', '2. b' }, T.lines(buf))
   end)
 end)

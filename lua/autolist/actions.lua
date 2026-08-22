@@ -425,20 +425,78 @@ function M.toggle_checkbox(bufnr, lnum)
   return true
 end
 
-local function style_matches(marker, spec)
-  if marker.kind ~= spec.kind then
+--- A style is the marker together with whether the item carries a checkbox;
+--- the tick inside it is the writer's record, not part of the style.
+local function style_matches(item, spec)
+  if (item.checkbox ~= nil) ~= spec.checkbox then
+    return false
+  end
+  local marker = item.marker
+  if marker.kind ~= spec.marker.kind then
     return false
   end
   if marker.kind == 'bullet' then
-    return marker.text == spec.text
+    return marker.text == spec.marker.text
   end
-  return marker.delim == spec.delim and marker.upper == spec.upper
+  return marker.delim == spec.marker.delim and marker.upper == spec.marker.upper
 end
 
---- FR-6. Convert every item of the block to the next marker style in the
---- configured order, numbering each level from the start.
+--- Read the cycle entries, each of which may carry a checkbox (`- [ ]`).
+local function cycle_specs(opts)
+  local specs = {}
+  for _, text in ipairs(opts.cycle or {}) do
+    local parsed = lineparse.parse(text .. ' x', opts)
+    if parsed.marker then
+      specs[#specs + 1] = { marker = parsed.marker, checkbox = parsed.checkbox ~= nil }
+    end
+  end
+  return specs
+end
+
+--- Move one item onto `spec`, numbering it `ordinal` when the style is ordered.
+local function apply_style(entry, spec, ordinal, opts)
+  local item = entry.item
+  local marker = item.marker
+  marker.kind = spec.marker.kind
+  marker.text = spec.marker.text
+  marker.delim = spec.marker.delim
+  marker.upper = spec.marker.upper
+  marker.ambiguous = false
+  marker.value = spec.marker.kind ~= 'bullet' and ordinal or nil
+
+  if spec.checkbox then
+    -- Gaining a checkbox starts unchecked; keeping one keeps its state.
+    if not item.checkbox then
+      item.checkbox = opts.checkbox.unchecked
+      item.checkbox_space = ' '
+    end
+  else
+    item.checkbox = nil
+    item.checkbox_space = nil
+  end
+  -- A marker that ended the line has no space after it, which leaves no room
+  -- for a checkbox or for anything typed later.
+  if item.space == '' and (item.checkbox or item.content ~= '') then
+    item.space = ' '
+  end
+
+  local rendered = lineparse.render(item)
+  if rendered ~= item.text then
+    item.text = rendered
+    entry.dirty = true
+  end
+end
+
+--- FR-6. Move a set of items to the next style in the configured order.
+---
+--- `scope` picks what "a set" means, because a nested list often wants a
+--- different marker per level:
+---   'block'    every item of the block, at every level
+---   'siblings' only the run the cursor is in -- its parent and children are
+---              left as they are
+--- @param scope '"block"'|'"siblings"'
 --- @return boolean
-function M.cycle_markers(bufnr, lnum)
+function M.cycle_markers(bufnr, lnum, scope)
   local opts = config.get(bufnr)
   if not opts then
     return false
@@ -448,54 +506,38 @@ function M.cycle_markers(bufnr, lnum)
   if not blk then
     return false
   end
-
-  local specs = {}
-  for _, text in ipairs(opts.cycle or {}) do
-    local marker = lineparse.parse(text .. ' x', opts).marker
-    if marker then
-      specs[#specs + 1] = marker
-    end
-  end
+  local specs = cycle_specs(opts)
   if #specs == 0 then
     return false
   end
 
-  local first
-  for _, entry in ipairs(blk.entries) do
-    if not entry.continuation then
-      first = entry
-      break
+  local runs = block.runs(blk)
+  if scope == 'siblings' then
+    local run = block.run_at(blk, lnum)
+    if not run then
+      return false
     end
+    runs = { run }
   end
+
+  -- The style to move on from is the one the first item of the target wears.
+  local first = runs[1] and runs[1][1]
   if not first then
     return false
   end
-
   local at = 0
   for i, spec in ipairs(specs) do
-    if style_matches(first.item.marker, spec) then
+    if style_matches(first.item, spec) then
       at = i
       break
     end
   end
+  -- Unrecognised styles land on the start of the cycle rather than nowhere.
   local next_spec = specs[(at % #specs) + 1]
 
-  for _, run in ipairs(block.runs(blk)) do
-    local ordinal = 0
-    for _, entry in ipairs(run) do
-      ordinal = ordinal + 1
-      local marker = entry.item.marker
-      marker.kind = next_spec.kind
-      marker.text = next_spec.text
-      marker.delim = next_spec.delim
-      marker.upper = next_spec.upper
-      marker.ambiguous = false
-      marker.value = next_spec.kind ~= 'bullet' and ordinal or nil
-      local text = lineparse.render_marker(marker)
-      if text ~= entry.item.marker_text then
-        entry.item.marker_text = text
-        entry.dirty = true
-      end
+  for _, run in ipairs(runs) do
+    for ordinal, entry in ipairs(run) do
+      apply_style(entry, next_spec, ordinal, opts)
     end
   end
 

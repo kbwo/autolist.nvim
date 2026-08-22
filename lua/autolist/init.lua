@@ -47,11 +47,18 @@ function M.toggle_checkbox(lnum)
   return actions.toggle_checkbox(0, lnum or vim.api.nvim_win_get_cursor(0)[1])
 end
 
---- FR-6. Switch the marker style of the block around the cursor to the next one
---- in the configured cycle.
+--- FR-6. Switch every item of the block around the cursor, at every level, to
+--- the next marker style in the configured cycle.
 --- @return boolean handled
-function M.cycle_markers()
-  return actions.cycle_markers(0, vim.api.nvim_win_get_cursor(0)[1])
+function M.cycle_markers_block()
+  return actions.cycle_markers(0, vim.api.nvim_win_get_cursor(0)[1], 'block')
+end
+
+--- FR-6. Switch only the run of siblings the cursor is in, leaving its parent
+--- and its nested items as they are.
+--- @return boolean handled
+function M.cycle_markers_siblings()
+  return actions.cycle_markers(0, vim.api.nvim_win_get_cursor(0)[1], 'siblings')
 end
 
 --- FR-9. Turn the plain lines of a range into list items, keeping whatever
