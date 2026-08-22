@@ -54,6 +54,16 @@ function M.cycle_markers()
   return actions.cycle_markers(0, vim.api.nvim_win_get_cursor(0)[1])
 end
 
+--- FR-9. Turn the plain lines of a range into list items, keeping whatever
+--- indentation they already have. Defaults to the cursor line.
+--- @param first integer|nil
+--- @param last integer|nil
+--- @return boolean handled
+function M.make_list(first, last)
+  local lnum = vim.api.nvim_win_get_cursor(0)[1]
+  return actions.make_list(0, first or lnum, last or first or lnum)
+end
+
 --- Whether the cursor sits in the leading part of a list item -- its
 --- indentation, marker or checkbox -- rather than in the content.
 ---

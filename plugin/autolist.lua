@@ -30,3 +30,7 @@ end, { range = true, desc = 'Toggle the checkbox on each line of the range' })
 command('AutolistCycleMarkers', function()
   require('autolist').cycle_markers()
 end, { desc = 'Switch the list block to the next marker style' })
+
+command('AutolistMakeList', function(args)
+  require('autolist').make_list(args.line1, args.line2)
+end, { range = true, desc = 'Turn the plain lines of the range into list items' })

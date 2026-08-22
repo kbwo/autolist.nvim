@@ -157,6 +157,26 @@ adding one.
 configured order — by default `-` → `*` → `1.` → `1)` → `a)` → `I.` and around
 again. Turning a block into an ordered list numbers it correctly.
 
+### Turning plain text into a list
+
+Notes often get written with nothing but indentation for structure.
+`:AutolistMakeList` gives those lines a marker, leaving the indentation exactly
+as it was — so the nesting the text already had becomes the nesting of the list.
+
+```
+ccmanager                              - ccmanager
+    write a skill    →  :%AutolistMakeList →     - write a skill
+    delete a worktree                          - delete a worktree
+```
+
+It marks the lines of the range you give it and nothing else — it does not
+hunt for where the text begins and ends, because guessing wrong would rewrite
+lines you never pointed at. Lines that are already items, blank lines,
+thematic breaks and code blocks are left alone.
+
+The marker is the first entry of `cycle`; for any other style, run
+`:AutolistCycleMarkers` afterwards.
+
 ### Where it stays out of the way
 
 Things that merely look like list markers are left alone: fenced and indented
@@ -218,6 +238,7 @@ Every function returns `true` when it acted and `false` when it did not.
 | `renumber()` | Renumber the block under the cursor. |
 | `toggle_checkbox(lnum?)` | Flip the checkbox on a line. |
 | `cycle_markers()` | Switch the block to the next marker style. |
+| `make_list(first?, last?)` | Turn plain lines into list items. Defaults to the cursor line. |
 | `cr()` / `tab()` / `shift_tab()` | For `expr` mappings: a key sequence, or `nil` to fall through. |
 | `at_item_prefix()` | Whether the cursor is in an item's indent/marker/checkbox. For callers that cannot use an `expr` mapping. |
 

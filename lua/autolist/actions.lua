@@ -502,4 +502,77 @@ function M.cycle_markers(bufnr, lnum)
   return flush(bufnr, blk)
 end
 
+--- FR-9. Give the plain lines of a range a marker, turning notes written with
+--- nothing but indentation into a list.
+---
+--- The range is whatever the caller asks for -- there is no guessing at where
+--- the text begins and ends, because plain prose has no reliable boundary and
+--- a wrong guess rewrites lines the user never pointed at (NFR-6).
+--- @param bufnr integer
+--- @param first integer 1-based, inclusive
+--- @param last integer 1-based, inclusive
+--- @return boolean
+function M.make_list(bufnr, first, last)
+  local opts = config.get(bufnr)
+  if not opts then
+    return false
+  end
+  bufnr = resolve_buf(bufnr)
+  local total = vim.api.nvim_buf_line_count(bufnr)
+  first = math.max(1, first)
+  last = math.min(total, last)
+  if first > last then
+    return false
+  end
+
+  local spec = lineparse.parse((opts.cycle or {})[1] .. ' x', opts).marker
+  if not spec then
+    return false
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(bufnr, first - 1, last, false)
+  -- Ordered markers count per level, restarting whenever a shallower line comes
+  -- between, which is the same rule sibling runs follow elsewhere.
+  local levels = {}
+  local out, changed = {}, false
+
+  for offset, line in ipairs(lines) do
+    local lnum = first + offset - 1
+    local parsed = lineparse.parse(line, opts)
+    local skip = parsed.blank
+      or parsed.marker ~= nil
+      or parsed.thematic_break
+      or context.is_code(bufnr, lnum, opts)
+    if skip then
+      out[offset] = line
+    else
+      local marker = vim.deepcopy(spec)
+      if marker.kind ~= 'bullet' then
+        local width = parsed.indent_width
+        while #levels > 0 and levels[#levels].indent > width do
+          table.remove(levels)
+        end
+        if #levels > 0 and levels[#levels].indent == width then
+          levels[#levels].count = levels[#levels].count + 1
+        else
+          levels[#levels + 1] = { indent = width, count = 1 }
+        end
+        marker.value = levels[#levels].count
+      end
+      out[offset] = parsed.quote
+        .. parsed.indent
+        .. lineparse.render_marker(marker)
+        .. ' '
+        .. parsed.body
+      changed = true
+    end
+  end
+
+  if not changed then
+    return false
+  end
+  vim.api.nvim_buf_set_lines(bufnr, first - 1, last, false, out)
+  return true
+end
+
 return M

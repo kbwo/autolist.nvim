@@ -76,6 +76,11 @@ mapping is not allowed to change the buffer itself.
         Change every item of the block to the next marker style in `cycle`.
         See |autolist-marker-styles|.
 
+                                                            *:AutolistMakeList*
+:[range]AutolistMakeList
+        Give the plain lines of [range] a marker, turning notes written with
+        nothing but indentation into a list. See |autolist-make-list|.
+
 ==============================================================================
 4. LUA API                                                       *autolist-api*
 
@@ -102,6 +107,11 @@ autolist.toggle_checkbox([{lnum}])                 *autolist.toggle_checkbox()*
 
 autolist.cycle_markers()                             *autolist.cycle_markers()*
         Switch the block to the next marker style.
+
+autolist.make_list([{first}[, {last}]])                  *autolist.make_list()*
+        Turn the plain lines between {first} and {last} into list items,
+        keeping the indentation they already have. Defaults to the cursor
+        line. See |autolist-make-list|.
 
 autolist.at_item_prefix()                           *autolist.at_item_prefix()*
         Whether the cursor is in the leading part of a list item -- its
@@ -264,6 +274,33 @@ Marker styles                                          *autolist-marker-styles*
 |:AutolistCycleMarkers| converts every item of the block, at every level, to
 the next style in `cycle`. When the result is an ordered list, each level is
 numbered from the beginning.
+
+Turning plain text into a list                             *autolist-make-list*
+
+Notes are often written with nothing but indentation for structure:
+>
+    ccmanager
+        write a skill for the settings
+        let Space delete a worktree
+<
+|:AutolistMakeList| gives those lines a marker. The indentation is left exactly
+as it was and the marker goes after it, so the nesting the text already had
+becomes the nesting of the list -- tabs and spaces alike.
+>
+    - ccmanager
+        - write a skill for the settings
+        - let Space delete a worktree
+<
+It marks the lines of the range you give it and nothing else. It does not look
+for where the text starts and ends, because prose has no reliable boundary and
+guessing wrong would rewrite lines you never pointed at.
+
+Within the range it leaves alone: lines that are already items, blank lines,
+thematic breaks, and anything inside a code block. Blockquote markers are kept.
+
+The marker is the first entry of `cycle`, so there is no second setting to keep
+in step. For any other style, run |:AutolistCycleMarkers| afterwards. If that
+first entry is an ordered marker, each level is numbered from the start.
 
 Lines that are not lists                                        *autolist-code*
 
