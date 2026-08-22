@@ -49,16 +49,20 @@ end
 
 --- FR-6. Switch every item of the block around the cursor, at every level, to
 --- the next marker style in the configured cycle.
+--- @param opts table|nil `{ reverse = true }` walks the cycle backwards
 --- @return boolean handled
-function M.cycle_markers_block()
-  return actions.cycle_markers(0, vim.api.nvim_win_get_cursor(0)[1], 'block')
+function M.cycle_markers_block(opts)
+  local lnum = vim.api.nvim_win_get_cursor(0)[1]
+  return actions.cycle_markers(0, lnum, 'block', opts and opts.reverse)
 end
 
 --- FR-6. Switch only the run of siblings the cursor is in, leaving its parent
 --- and its nested items as they are.
+--- @param opts table|nil `{ reverse = true }` walks the cycle backwards
 --- @return boolean handled
-function M.cycle_markers_siblings()
-  return actions.cycle_markers(0, vim.api.nvim_win_get_cursor(0)[1], 'siblings')
+function M.cycle_markers_siblings(opts)
+  local lnum = vim.api.nvim_win_get_cursor(0)[1]
+  return actions.cycle_markers(0, lnum, 'siblings', opts and opts.reverse)
 end
 
 --- FR-9. Turn the plain lines of a range into list items, keeping whatever

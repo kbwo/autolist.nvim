@@ -495,8 +495,9 @@ end
 ---   'siblings' only the run the cursor is in -- its parent and children are
 ---              left as they are
 --- @param scope '"block"'|'"siblings"'
+--- @param reverse boolean|nil walk the cycle backwards, to undo a step too far
 --- @return boolean
-function M.cycle_markers(bufnr, lnum, scope)
+function M.cycle_markers(bufnr, lnum, scope, reverse)
   local opts = config.get(bufnr)
   if not opts then
     return false
@@ -532,8 +533,17 @@ function M.cycle_markers(bufnr, lnum, scope)
       break
     end
   end
-  -- Unrecognised styles land on the start of the cycle rather than nowhere.
-  local next_spec = specs[(at % #specs) + 1]
+  local target
+  if at == 0 then
+    -- Unrecognised styles land on the start of the cycle, whichever way we are
+    -- going, rather than on an arbitrary point of it.
+    target = 1
+  elseif reverse then
+    target = ((at - 2) % #specs) + 1
+  else
+    target = (at % #specs) + 1
+  end
+  local next_spec = specs[target]
 
   for _, run in ipairs(runs) do
     for ordinal, entry in ipairs(run) do

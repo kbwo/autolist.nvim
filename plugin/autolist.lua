@@ -27,13 +27,14 @@ command('AutolistToggleCheckbox', function(args)
   end
 end, { range = true, desc = 'Toggle the checkbox on each line of the range' })
 
-command('AutolistCycleMarkersBlock', function()
-  require('autolist').cycle_markers_block()
-end, { desc = 'Switch the whole block, every level, to the next marker style' })
+-- The bang walks the cycle backwards, for stepping one style too far.
+command('AutolistCycleMarkersBlock', function(args)
+  require('autolist').cycle_markers_block({ reverse = args.bang })
+end, { bang = true, desc = 'Switch the whole block, every level, to the next marker style' })
 
-command('AutolistCycleMarkersSiblings', function()
-  require('autolist').cycle_markers_siblings()
-end, { desc = 'Switch only the siblings at the cursor to the next marker style' })
+command('AutolistCycleMarkersSiblings', function(args)
+  require('autolist').cycle_markers_siblings({ reverse = args.bang })
+end, { bang = true, desc = 'Switch only the siblings at the cursor to the next marker style' })
 
 command('AutolistMakeList', function(args)
   require('autolist').make_list(args.line1, args.line2)

@@ -166,6 +166,9 @@ with them, because a nested list often wants a different marker per level:
 - `:AutolistCycleMarkersSiblings` — only the run the cursor is in; its parent
   and its nested items are untouched
 
+Both take a `!` to walk the cycle backwards, so a step too far comes straight
+back, and both wrap around at the ends.
+
 ```markdown
 - 親                                  - 親
     - 子   →  siblings, three times →     1. 子
@@ -266,8 +269,8 @@ Every function returns `true` when it acted and `false` when it did not.
 | `indent()` / `dedent()` | Move the item one level and renumber the block. |
 | `renumber()` | Renumber the block under the cursor. |
 | `toggle_checkbox(lnum?)` | Flip the checkbox on a line. |
-| `cycle_markers_block()` | Switch every item of the block to the next marker style. |
-| `cycle_markers_siblings()` | Switch only the siblings at the cursor. |
+| `cycle_markers_block(opts?)` | Switch every item of the block to the next marker style. `{ reverse = true }` for the previous. |
+| `cycle_markers_siblings(opts?)` | The same, for only the siblings at the cursor. |
 | `make_list(first?, last?)` | Turn plain lines into list items. Defaults to the cursor line. |
 | `cr()` / `tab()` / `shift_tab()` | For `expr` mappings: a key sequence, or `nil` to fall through. |
 | `at_item_prefix()` | Whether the cursor is in an item's indent/marker/checkbox. For callers that cannot use an `expr` mapping. |

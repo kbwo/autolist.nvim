@@ -72,14 +72,16 @@ mapping is not allowed to change the buffer itself.
         Items without a checkbox are left alone.
 
                                                    *:AutolistCycleMarkersBlock*
-:AutolistCycleMarkersBlock
+:AutolistCycleMarkersBlock[!]
         Change every item of the block, at every level, to the next marker
-        style in `cycle`. See |autolist-marker-styles|.
+        style in `cycle`. With [!], to the previous one.
+        See |autolist-marker-styles|.
 
                                                 *:AutolistCycleMarkersSiblings*
-:AutolistCycleMarkersSiblings
+:AutolistCycleMarkersSiblings[!]
         Change only the run of siblings the cursor is in, leaving its parent
-        and its nested items as they are. See |autolist-marker-styles|.
+        and its nested items as they are. With [!], to the previous style.
+        See |autolist-marker-styles|.
 
                                                             *:AutolistMakeList*
 :[range]AutolistMakeList
@@ -110,10 +112,11 @@ autolist.renumber()                                       *autolist.renumber()*
 autolist.toggle_checkbox([{lnum}])                 *autolist.toggle_checkbox()*
         Flip the checkbox on {lnum}, or on the cursor line.
 
-autolist.cycle_markers_block()                 *autolist.cycle_markers_block()*
-autolist.cycle_markers_siblings()           *autolist.cycle_markers_siblings()*
+autolist.cycle_markers_block([{opts}])         *autolist.cycle_markers_block()*
+autolist.cycle_markers_siblings([{opts}])   *autolist.cycle_markers_siblings()*
         Switch the block, or only the siblings at the cursor, to the next
-        marker style. See |autolist-marker-styles|.
+        marker style. Pass `{ reverse = true }` for the previous one.
+        See |autolist-marker-styles|.
 
 autolist.make_list([{first}[, {last}]])                  *autolist.make_list()*
         Turn the plain lines between {first} and {last} into list items,
@@ -295,9 +298,11 @@ level:
                                  its nested items are untouched
 
 Either way, the style moved on from is the one the first item of the target
-wears, and every item of the target ends up on the same next style. A style
-that is not in `cycle` lands on the start of it. When the result is ordered,
-each level is numbered from the beginning.
+wears, and every item of the target ends up on the same next style. Both walk
+the cycle backwards when given [!], so a step too far comes straight back, and
+both wrap around at the ends. A style that is not in `cycle` lands on the start
+of it whichever way you are going. When the result is ordered, each level is
+numbered from the beginning.
 >
     - 親                            - 親
         - 子     →  siblings  →         1. 子

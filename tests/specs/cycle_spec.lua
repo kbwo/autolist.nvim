@@ -38,11 +38,43 @@ T.describe('FR-6 converting the marker style', function()
     T.eq({ '1) あ', '2) い', '3) う' }, T.lines(buf))
   end)
 
-  T.it('starts from the beginning of the cycle for an unlisted style', function()
-    local buf = T.buf({ '+ あ' })
+  T.it('walks backwards too', function()
+    local buf = T.buf({ '1. あ' })
+    T.cursor(1, 0)
+    local seen = {}
+    for _ = 1, 4 do
+      autolist.cycle_markers_block({ reverse = true })
+      seen[#seen + 1] = T.lines(buf)[1]
+    end
+    T.eq({ '* あ', '- [ ] あ', '- あ', 'I. あ' }, seen)
+  end)
+
+  T.it('comes straight back from a step too far', function()
+    local buf = T.buf({ '- a', '- b' })
     T.cursor(1, 0)
     autolist.cycle_markers_block()
-    T.eq({ '- あ' }, T.lines(buf))
+    autolist.cycle_markers_block()
+    T.eq({ '* a', '* b' }, T.lines(buf))
+    autolist.cycle_markers_block({ reverse = true })
+    T.eq({ '- [ ] a', '- [ ] b' }, T.lines(buf))
+    autolist.cycle_markers_block({ reverse = true })
+    T.eq({ '- a', '- b' }, T.lines(buf))
+  end)
+
+  T.it('reverses the sibling scope as well', function()
+    local buf = T.buf({ '- 親', '    1. 子', '    2. 子', '- 親' })
+    T.cursor(2, 0)
+    autolist.cycle_markers_siblings({ reverse = true })
+    T.eq({ '- 親', '    * 子', '    * 子', '- 親' }, T.lines(buf))
+  end)
+
+  T.it('starts from the beginning of the cycle for an unlisted style', function()
+    for _, reverse in ipairs({ false, true }) do
+      local buf = T.buf({ '+ あ' })
+      T.cursor(1, 0)
+      autolist.cycle_markers_block({ reverse = reverse })
+      T.eq({ '- あ' }, T.lines(buf), 'reverse=' .. tostring(reverse))
+    end
   end)
 
   T.it('does nothing outside a list', function()
