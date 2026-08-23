@@ -30,8 +30,9 @@ autolist maps no keys. Choose them yourself.
 
 Each entry point reports whether it acted, so a mapping can fall through to
 whatever the key would otherwise do -- a default, or another plugin. The
-expression helpers |autolist.cr()|, |autolist.tab()| and |autolist.shift_tab()|
-return a key sequence when autolist wants the key and |nil| when it does not:
+expression helpers |autolist.cr()|, |autolist.o()|, |autolist.shift_o()|,
+|autolist.tab()| and |autolist.shift_tab()| return a key sequence when autolist
+wants the key and |nil| when it does not:
 >lua
     vim.keymap.set('i', '<CR>', function()
       return require('autolist').cr() or '<CR>'
@@ -102,6 +103,15 @@ autolist.newline()                                         *autolist.newline()*
         Break the current list item and start the next one, or leave the list
         when the item is empty. See |autolist-newline|.
 
+autolist.open_below()                                   *autolist.open_below()*
+autolist.open_above()                                   *autolist.open_above()*
+        Add an item on the line below or above the one under the cursor, the
+        way `o` and `O` add a line, leaving the current line whole.
+        See |autolist-open|.
+
+        Insert mode is not started here; |autolist.o()| is the entry point
+        that does it, for a key that is expected to end there.
+
 autolist.indent()                                           *autolist.indent()*
 autolist.dedent()                                           *autolist.dedent()*
         Move the item under the cursor one level and renumber the block.
@@ -146,6 +156,17 @@ autolist.cr()                                                   *autolist.cr()*
         For an insert-mode |:map-<expr>| mapping: a key sequence that runs
         |autolist.newline()|, or |nil| when the cursor is not on a list item.
 
+autolist.o()                                                     *autolist.o()*
+autolist.shift_o()                                         *autolist.shift_o()*
+        For a normal-mode |:map-<expr>| mapping on `o` and `O`: a key sequence
+        that runs |autolist.open_below()| or |autolist.open_above()| and then
+        starts insert mode at the end of the new item, or |nil| when the cursor
+        is not on a list item.
+>lua
+        vim.keymap.set('n', 'o', function()
+          return require('autolist').o() or 'o'
+        end, { buffer = true, expr = true })
+<
 autolist.tab()                                                 *autolist.tab()*
 autolist.shift_tab()                                     *autolist.shift_tab()*
         For an insert-mode |:map-<expr>| mapping: a key sequence that runs
@@ -240,6 +261,33 @@ markdown renders as a sequence anyway) goes on repeating that number.
 
 On a continuation line, and with the cursor before the marker, it reports
 `false` and leaves the key to you.
+
+Adding a line above or below                                    *autolist-open*
+
+|autolist.open_below()| and |autolist.open_above()| put a new item on the next
+or the previous line, so that adding one does not mean going to the end of the
+item you are on first. The line under the cursor is left whole, and where the
+cursor sits within it makes no difference -- unlike a newline, nothing is cut
+at that point.
+
+The marker is built exactly as it is for a newline: same indentation, same
+delimiter, an unchecked checkbox where the item has one, quote markers kept.
+An item added below counts on from the current one; an item added above takes
+over its place in the list, and with it its number.
+>
+    - apple|          →  o  →   - apple
+                                - |
+
+    2. apple|         →  O  →   2. |
+                                2. apple
+<
+The items further down keep the numbers they had, which is the state
+continuing a list on a newline leaves behind as well. |:AutolistRenumber|
+makes them consecutive when you want them to be.
+
+An item with no content gets a new item like any other: adding a line is not
+how a list is left (that is |autolist-empty|), and clearing the line you are
+standing on is not what the key was pressed for.
 
 Leaving a list                                                 *autolist-empty*
 
@@ -371,6 +419,11 @@ Alphabetic markers are runs of letters of one case, so `ab)` is a marker and
 
 Blockquotes of different depths are separate blocks; numbering does not run
 across them.
+
+A count in front of a key mapped through |autolist.o()| or |autolist.shift_o()|
+is not applied: `3o` on a list item adds one item, not three. The mapping
+consumes the count. On a line autolist does not act on, the key falls through
+with its count intact.
 
 The specification these rules come from, including why each was decided this
 way, is in `docs/requirements.md` (Japanese).

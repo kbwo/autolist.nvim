@@ -38,8 +38,8 @@ The plugin deliberately maps nothing. Every entry point tells you whether it
 did anything, so your mapping can fall through to whatever else that key does
 — your own default, or another plugin's.
 
-The expression helpers (`cr`, `tab`, `shift_tab`) return a key sequence when
-autolist wants the key and `nil` when it does not:
+The expression helpers (`cr`, `o`, `shift_o`, `tab`, `shift_tab`) return a key
+sequence when autolist wants the key and `nil` when it does not:
 
 ```lua
 vim.api.nvim_create_autocmd('FileType', {
@@ -51,6 +51,9 @@ vim.api.nvim_create_autocmd('FileType', {
     vim.keymap.set('i', '<CR>', function() return autolist.cr() or '<CR>' end, opts)
     vim.keymap.set('i', '<Tab>', function() return autolist.tab() or '<Tab>' end, opts)
     vim.keymap.set('i', '<S-Tab>', function() return autolist.shift_tab() or '<S-Tab>' end, opts)
+
+    vim.keymap.set('n', 'o', function() return autolist.o() or 'o' end, opts)
+    vim.keymap.set('n', 'O', function() return autolist.shift_o() or 'O' end, opts)
 
     vim.keymap.set('n', '<leader>lr', '<Cmd>AutolistRenumber<CR>', { buffer = event.buf })
     vim.keymap.set('n', '<leader>lc', '<Cmd>AutolistToggleCheckbox<CR>', { buffer = event.buf })
@@ -100,6 +103,28 @@ one above:
 Breaking in the middle of an item moves the rest of the text into the new one.
 A list written entirely with the same number (`1.` `1.` `1.`, which markdown
 renders as a sequence anyway) keeps writing that same number.
+
+### Opening a line above or below
+
+Your `o` and `O` mappings write the marker too, so adding an item without
+going through the end of the current one works the same way. The line under
+the cursor is left whole, wherever in it the cursor happens to be.
+
+```markdown
+- apple|          →  o  →   - apple
+                            - |
+
+2. apple|         →  O  →   2. |
+                            2. apple
+```
+
+An item added below counts on from the current one; an item added above takes
+over its place in the list, and with it its number. The items further down
+keep the numbers they had — run `:AutolistRenumber` when you want the list
+consecutive again.
+
+Unlike `<CR>`, this does not leave the list: on an item with no content it
+adds another empty item rather than clearing the one you are standing on.
 
 ### Leaving a list
 
@@ -266,13 +291,14 @@ Every function returns `true` when it acted and `false` when it did not.
 | --- | --- |
 | `setup(opts)` | Override the defaults. Optional. |
 | `newline()` | Continue the list, or leave it from an empty item. |
+| `open_below()` / `open_above()` | Add an item on the line below or above, leaving the current line whole. |
 | `indent()` / `dedent()` | Move the item one level and renumber the block. |
 | `renumber()` | Renumber the block under the cursor. |
 | `toggle_checkbox(lnum?)` | Flip the checkbox on a line. |
 | `cycle_markers_block(opts?)` | Switch every item of the block to the next marker style. `{ reverse = true }` for the previous. |
 | `cycle_markers_siblings(opts?)` | The same, for only the siblings at the cursor. |
 | `make_list(first?, last?)` | Turn plain lines into list items. Defaults to the cursor line. |
-| `cr()` / `tab()` / `shift_tab()` | For `expr` mappings: a key sequence, or `nil` to fall through. |
+| `cr()` / `o()` / `shift_o()` / `tab()` / `shift_tab()` | For `expr` mappings: a key sequence, or `nil` to fall through. `o()` and `shift_o()` start insert mode as well, the way `o` and `O` do. |
 | `at_item_prefix()` | Whether the cursor is in an item's indent/marker/checkbox. For callers that cannot use an `expr` mapping. |
 
 If another plugin already owns the key, route autolist through its mapping

@@ -21,6 +21,24 @@ function M.newline()
   return actions.newline(0, 0)
 end
 
+--- FR-10. Add an item on the line below the one under the cursor, the way `o`
+--- adds a line, with the marker of the current item and the next number.
+--- Returns false when the cursor is not on a list item.
+---
+--- Entering insert mode is left to the caller; |autolist.o()| is the entry
+--- point that does it, for a key that is expected to end there.
+--- @return boolean handled
+function M.open_below()
+  return actions.open(0, 0, 1)
+end
+
+--- FR-10. The same on the line above, where the new item takes the place of
+--- the current one in the list and so keeps its number.
+--- @return boolean handled
+function M.open_above()
+  return actions.open(0, 0, -1)
+end
+
 --- FR-4. Move the item under the cursor one level in, taking its nested items
 --- with it, and renumber the block.
 --- @return boolean handled
@@ -108,6 +126,26 @@ function M.cr()
     return nil
   end
   return "<Cmd>lua require('autolist').newline()<CR>"
+end
+
+--- Meant for normal mode, where `o` and `O` both add a line and end in insert
+--- mode. The returned sequence adds the item and then starts insert mode at
+--- the end of it, so that the key behaves as it always did apart from the
+--- marker it now writes for you.
+--- @return string|nil
+function M.o()
+  if not actions.can_open(0, 0) then
+    return nil
+  end
+  return "<Cmd>lua require('autolist').open_below()<CR><Cmd>startinsert!<CR>"
+end
+
+--- @return string|nil
+function M.shift_o()
+  if not actions.can_open(0, 0) then
+    return nil
+  end
+  return "<Cmd>lua require('autolist').open_above()<CR><Cmd>startinsert!<CR>"
 end
 
 --- Meant for insert mode: the key only shifts the item while the cursor is in

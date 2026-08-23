@@ -164,6 +164,36 @@ local function run_style(bufnr, lnum, opts)
   return { repeat_number = all_same_number(ordered), letter_kind = resolve_letter_kind(ordered) }
 end
 
+--- The leading part of an item continued from `item`: the same indentation,
+--- marker kind and delimiter, an unchecked checkbox when the source carries
+--- one, and the quote markers kept as they are.
+--- @param advance boolean whether the ordinal moves on from the source item's
+---   own -- an item added below counts on, one added above takes the source
+---   item's place in the run and so takes its number
+--- @return string
+local function continued_prefix(bufnr, lnum, item, opts, advance)
+  local marker = vim.deepcopy(item.marker)
+  if marker.kind ~= 'bullet' then
+    local style = run_style(bufnr, lnum, opts)
+    if marker.ambiguous and style.letter_kind then
+      marker.kind = style.letter_kind
+      marker.ambiguous = false
+    end
+    if advance and not style.repeat_number then
+      marker.value = (marker.value or 0) + 1
+    end
+  end
+
+  local space = item.space ~= '' and item.space or ' '
+  local checkbox = ''
+  if item.checkbox then
+    local box_space = item.checkbox_space ~= '' and item.checkbox_space or ' '
+    -- A new item always starts unchecked, however the previous one was left.
+    checkbox = '[' .. opts.checkbox.unchecked .. ']' .. box_space
+  end
+  return item.quote .. item.indent .. lineparse.render_marker(marker) .. space .. checkbox
+end
+
 --- Shared by `can_newline` and `newline` so that the two never disagree.
 local function newline_target(bufnr, win, opts)
   local lnum, col = unpack(vim.api.nvim_win_get_cursor(win))
@@ -217,26 +247,7 @@ function M.newline(bufnr, win)
     return true
   end
 
-  local marker = vim.deepcopy(item.marker)
-  if marker.kind ~= 'bullet' then
-    local style = run_style(bufnr, lnum, opts)
-    if marker.ambiguous and style.letter_kind then
-      marker.kind = style.letter_kind
-      marker.ambiguous = false
-    end
-    if not style.repeat_number then
-      marker.value = (marker.value or 0) + 1
-    end
-  end
-
-  local space = item.space ~= '' and item.space or ' '
-  local checkbox = ''
-  if item.checkbox then
-    local box_space = item.checkbox_space ~= '' and item.checkbox_space or ' '
-    -- A new item always starts unchecked, however the previous one was left.
-    checkbox = '[' .. opts.checkbox.unchecked .. ']' .. box_space
-  end
-  local prefix = item.quote .. item.indent .. lineparse.render_marker(marker) .. space .. checkbox
+  local prefix = continued_prefix(bufnr, lnum, item, opts, true)
 
   local line = item.text
   vim.api.nvim_buf_set_lines(
@@ -247,6 +258,63 @@ function M.newline(bufnr, win)
     { line:sub(1, col), prefix .. line:sub(col + 1) }
   )
   vim.api.nvim_win_set_cursor(win, { lnum + 1, #prefix })
+  return true
+end
+
+--- Shared by `can_open` and `open` so that the two never disagree.
+---
+--- Unlike a newline there is no test on the column: adding a line does not cut
+--- the current one at the cursor, so where the cursor sits within the item
+--- makes no difference to the result.
+local function open_target(bufnr, win, opts)
+  local lnum = vim.api.nvim_win_get_cursor(win)[1]
+  if context.is_code(bufnr, lnum, opts) then
+    return nil
+  end
+  local parsed = lineparse.parse(block.get_line(bufnr, lnum), opts)
+  -- Continuation lines take part in a block but never start a new item.
+  if not parsed.marker then
+    return nil
+  end
+  return { lnum = lnum, item = parsed }
+end
+
+--- Whether `open()` would do anything, so that a mapping can fall back to
+--- whatever else is bound to the key (NFR-2).
+--- @return boolean
+function M.can_open(bufnr, win)
+  local opts = config.get(bufnr)
+  if not opts then
+    return false
+  end
+  return open_target(resolve_buf(bufnr), resolve_win(win), opts) ~= nil
+end
+
+--- FR-10. Add an item on the line below or above the one under the cursor, the
+--- way `o` and `O` add a line, leaving the current line as it is.
+---
+--- The numbers of the items further down are not touched. Repeating a number
+--- is what continuing a list on a newline leaves behind too; making them
+--- consecutive again is `renumber()`'s job, on request (NFR-6).
+--- @param direction integer 1 for the line below, -1 for the line above
+--- @return boolean whether autolist handled the key
+function M.open(bufnr, win, direction)
+  local opts = config.get(bufnr)
+  if not opts then
+    return false
+  end
+  bufnr = resolve_buf(bufnr)
+  win = resolve_win(win)
+  local target = open_target(bufnr, win, opts)
+  if not target then
+    return false
+  end
+  -- Below, the new item follows this one and counts on from it. Above, it
+  -- takes over this one's place in the run, and so its number as well.
+  local prefix = continued_prefix(bufnr, target.lnum, target.item, opts, direction > 0)
+  local at = direction > 0 and target.lnum or target.lnum - 1
+  vim.api.nvim_buf_set_lines(bufnr, at, at, false, { prefix })
+  vim.api.nvim_win_set_cursor(win, { at + 1, #prefix })
   return true
 end
 
